@@ -147,6 +147,41 @@ body.reverse-order #chat {
   background-color: var(--notice-background-color);
 }
 
+#chat > div.announcement {
+  border-left-color: #eee;
+  border-left-color: var(--notice-color);
+  background-color: #96000070;
+  border-image-slice: 1;
+  border-left: 15px solid #9146ff;
+  border-right: 15px solid #9146ff;}
+
+#chat > div.announcement.primary {
+  border-color: rgb(145, 8, 15);
+}
+
+#chat > div.announcement.blue {
+  border-image-source: linear-gradient(#00d6d6,#9146ff);
+}
+
+#chat > div.announcement.green {
+  border-image-source: linear-gradient(#00db84,#57bee6);}
+
+#chat > div.announcement.orange {
+  border-image-source: linear-gradient(#ffb31a,#e0e000);
+}
+
+#chat > div.announcement.purple {
+  border-image-source: linear-gradient(#9146ff,#ff75e6);
+}
+
+
+
+#chat > div.announcement::before {
+  background: url(announce.svg) no-repeat center;
+  content: "\2800\2800";
+  color: white;
+}
+
 #chat > div.channel {
   border-left-color: #0d86ff;
   border-left-color: var(--channel-color);

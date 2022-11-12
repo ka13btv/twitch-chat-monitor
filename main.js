@@ -1,7 +1,7 @@
 var scrollDistance = 0, // How many pixels are we currently still hiding?
 	scrollReference = 0, // Distance when we started scrolling
 	imageExtensions = ['.jpg', '.jpeg', '.gif', '.png', '.webp', '.av1'],
-	bitLevels = [ 10000, 1000, 500, 100, 1 ],
+	bitLevels = [10000, 1000, 500, 100, 1],
 	frames = 0,
 	fpsInterval,
 	lastFrameReset,
@@ -12,7 +12,7 @@ var scrollDistance = 0, // How many pixels are we currently still hiding?
 
 
 /** Store settings with a local cache. Storing these variables directly in localStorage would remove the variable's type information **/
-var Settings = function() {
+var Settings = function () {
 	var transparentBackgroundKeys = ['notice-color', 'highlight-color', 'channel-color'];
 	// Clone default settings so they can be used to reset
 	var settings = Object.assign({}, defaultSettings);
@@ -43,7 +43,7 @@ var Settings = function() {
 	}
 }();
 
-var HexCompressor = function() {
+var HexCompressor = function () {
 	const characters = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ=#';
 	return {
 		color2string: (color) => {
@@ -56,13 +56,13 @@ var HexCompressor = function() {
 			code += characters.charAt(secondHalf % 64);
 			return code;
 		},
-		string2color: (string) => '#' + 
+		string2color: (string) => '#' +
 			("00" + (characters.indexOf(string.charAt(0)) * 64 + characters.indexOf(string.charAt(1))).toString(16)).slice(-3) +
 			("00" + (characters.indexOf(string.charAt(2)) * 64 + characters.indexOf(string.charAt(3))).toString(16)).slice(-3)
 	};
 }();
 
-var Badges = function() {
+var Badges = function () {
 	var globalBadges = {};
 	var channelBadges = {};
 	var loadBadges = (url, handler, timeout = 2000) => {
@@ -83,7 +83,7 @@ var Badges = function() {
 	loadBadges('https://badges.twitch.tv/v1/badges/global/display?language=en', (badgeSet) => globalBadges = badgeSet);
 	return {
 		'lookup': (badge, version, channel) => globalBadges[badge]?.versions[version] ?? channelBadges[channel]?.[badge]?.versions[version] ?? null,
-		'load' : (channel) => {
+		'load': (channel) => {
 			if (channelBadges[channel] == undefined) {
 				loadBadges(`https://badges.twitch.tv/v1/badges/channels/${channel}/display?language=en`, (badgeSet) => channelBadges[channel] = badgeSet);
 			}
@@ -182,6 +182,7 @@ if (Settings.get('identity')) {
 }
 var client = new tmi.client(configuration);
 client.on('message', handleChat);
+client.on('announcement', handleAnnouncement);
 client.on('roomstate', handleRoomstate);
 client.on('subscription', (channel, username, method, message, userstate) => handleSubscription(username, message, userstate));
 client.on('resub', (channel, username, months, message, userstate, methods) => handleSubscription(username, message, userstate));
@@ -203,6 +204,7 @@ client.on('clearchat', (channel) => {
 // Network connection monitoring
 client.on('disconnected', () => ui.notifications.networkStatus.classList.remove('hidden'));
 client.on('connected', () => {
+	console.log(client);
 	if (!ui.notifications.networkStatus.classList.contains('hidden')) {
 		addNotice('Connection reestablished, resuming chat monitoring.');
 	}
@@ -269,11 +271,11 @@ if (Settings.get('identity')) {
 configureToggler('twitch-messagefield', () => {
 	document.body.classList.toggle('show-message-entry', Settings.get('twitch-messagefield'));
 	if (Settings.get('twitch-messagefield') && client.username.toLowerCase() != Settings.get('identity').username.toLowerCase()) {
-			ui.messageEntry.username.textContent = Settings.get('identity').username;
-			client.disconnect();
-			client.opts.identity = Settings.get('identity');
-			client.opts.username = Settings.get('identity').username;
-			client.connect();
+		ui.messageEntry.username.textContent = Settings.get('identity').username;
+		client.disconnect();
+		client.opts.identity = Settings.get('identity');
+		client.opts.username = Settings.get('identity').username;
+		client.connect();
 	}
 });
 ui.settings.twitch.identity.username.addEventListener('input', (e) => {
@@ -631,14 +633,21 @@ window.requestAnimationFrame(step);
 /** Chat event handling **/
 function handleChat(channel, userstate, message) {
 	if (Settings.get('limit-message-rate')) {
-		messageQueue.push([ channel, userstate, message ]);
+		messageQueue.push([channel, userstate, message]);
 	} else {
 		processChat(channel, userstate, message);
 	}
 }
 
+/** Chat event handling **/
+function handleAnnouncement(channel, userstate, message) {
+	processChat(channel, userstate, message);
+}
+
 function processChat(channel, userstate, message) {
 	try {
+		console.log(userstate);
+
 		// If enabled, combine messages instead of adding a new message
 		var id = 'message-' + message.toLowerCase().replace(/[^\p{Letter}]/gu, '');
 		if (Settings.get('combine-messages') && document.getElementById(id)) {
@@ -726,7 +735,11 @@ function processChat(channel, userstate, message) {
 					.catch(e => console.log(e));
 			});
 		}
-		addMessage(chatLine);
+		//msg-param-color
+		if (userstate['msg-id'] == "announcement")
+			addAnnouncement(chatLine, userstate['msg-param-color'].toLowerCase());
+		else
+			addMessage(chatLine);
 		// Check whether the message we just added was a message that was already deleted
 		if (userstate.deleted) {
 			deleteMessage(userstate.id);
@@ -901,6 +914,11 @@ function addNotice(message) {
 	chatLine.textContent = message;
 	chatLine.className = 'notice';
 	addMessage(chatLine);
+}
+
+function addAnnouncement(chatLine, color = "") {
+	chatLine.className = 'announcement ' + color;
+	ui.chat.body.appendChild(chatLine);
 }
 
 function addMessage(chatLine, bypass) {
@@ -1094,7 +1112,7 @@ function updateTimestamp(field) {
 		'short12': (now) => (new Date(now)).toLocaleTimeString('en-US').replace(/:\d\d /, ' ').replace(/^(\d):/, '0$1:'),
 		'long12': (now) => (new Date(now)).toLocaleTimeString('en-US').replace(/^(\d):/, '0$1:'),
 		'short': (now) => (new Date(now)).toLocaleTimeString('en-GB').replace(/^\d\d:/, ''),
-		'': () => {}
+		'': () => { }
 	};
 	field.textContent = formats[Settings.get('timestamps')](parseInt(field.dataset.timestamp));
 }
